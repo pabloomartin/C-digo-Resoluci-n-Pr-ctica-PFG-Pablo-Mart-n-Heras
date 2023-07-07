@@ -1,0 +1,314 @@
+En este repositorio se adjuntará los códigos utilizados para obtener las gráficas adjuntadas en el proyecto y que han servido para analizar y comprender el comportamiento de una epidemia, con la herramienta MATLAB.
+El código utilizado para los 4 escenarios planteados de Sierra Leona es el siguiente:
+% Parámetros iniciales
+C = 0;                  % Confinados iniciales
+N = 7300000;            % Población total
+S0 = N - C;             % Susceptibles iniciales
+beta = 0.4;             % Tasa de transmisión
+gamma = 0.22;           % Tasa de recuperación
+mu = 0.05;              % Tasa de mortalidad
+I0 = 9500;              % Infectados iniciales
+
+% Función de las ecuaciones diferenciales
+f = @(t, y) [-beta * y(1) * y(2) / S0;                              % dS/dt
+              beta * y(1) * y(2) / S0 - gamma * y(2) - mu * y(2);   % dI/dt
+              gamma * y(2);                                         % dR/dt
+              mu * y(2)];                                           % dD/dt
+
+% Intervalo de tiempo
+tspan = [0 100];
+
+% Condiciones iniciales
+y0 = [S0-I0; I0; 0; 0];
+
+% Solución mediante Runge-Kutta de orden 4
+[t, y] = ode45(f, tspan, y0);
+
+% Extraer variables
+S = y(:, 1);
+I = y(:, 2);
+R = y(:, 3);
+D = y(:, 4);
+
+% Actualizar los susceptibles
+S = S0 - I - R - D;
+
+% Gráficas
+plot(t, S, 'b', 'LineWidth', 1.5);
+hold on;
+plot(t, I, 'r', 'LineWidth', 1.5);
+plot(t, R, 'g', 'LineWidth', 1.5);
+plot(t, D, 'k', 'LineWidth', 1.5);
+hold off;
+title('Modelo SIRCD - Evolución de la pandemia');
+xlabel('Días');
+ylabel('Número de individuos');
+legend('Susceptibles', 'Infectados', 'Recuperados', 'Muertos');
+grid on;
+xlim([0 100]);
+ylim([0 10000000]);
+
+Este código es idéntico para el uso de la función 'ode78' salvo que en la línea 22 del código habría que cambiar 'ode45' por 'ode78'. 
+En cuanto a los escenarios, el código es el mismo salvo que hay que modificar el parámetro inicial C, que modificará directamente el número de Susceptibles iniciales. 
+El resto de condiciones iniciales se mantienen.
+
+En cambio, para la análisis de escenarios con la tasa de transmisión 0.002 (en vez del 0.4 observado arriba) se ha utilizado el siguiente código:
+t0 = 0; 
+tf = 100;  % Días
+steps = 1000; % Usamos 1000 iteraciones
+h = (tf-t0)/(steps-1);
+N = 730;       % Población total
+c = 530;       % Confinados iniciales
+s0 = N - C;    % Susceptibles iniciales
+I0 = 0.95;     % Infectados iniciales
+R0 = 0;        % Recuperados iniciales
+D0 = 0;        % Fallecidos iniciales
+beta = 0.002;  % Tasa de transmisión
+gamma = 0.22;  % Tasa de recuperación
+mu = 0.05;     % Tasa de mortalidad
+
+f = @(t, S, I, R, C, D) -beta * S * I;
+g = @(t, S, I, R, C, D) beta * S * I - gamma * I - mu * I;
+j = @(t, S, I, R, C, D) gamma * I;
+l = @(t, S, I, R, C, D) mu * I;
+
+S = zeros(1, steps);
+I = zeros(1, steps);
+R = zeros(1, steps);
+D = zeros(1, steps);
+t = [t0:h:tf];
+
+S(1) = s0;
+I(1) = I0;
+R(1) = R0;
+D(1) = D0;
+
+for i = 2:steps
+    k1 = f(t(i-1), S(i-1), I(i-1), R(i-1), D(i-1));
+    m1 = g(t(i-1), S(i-1), I(i-1), R(i-1), D(i-1));
+    n1 = j(t(i-1), S(i-1), I(i-1), R(i-1), D(i-1));
+    p1 = l(t(i-1), S(i-1), I(i-1), R(i-1), D(i-1));
+
+    k2 = f(t(i-1) + 0.5 * h, S(i-1) + 0.5 * k1 * h, I(i-1) + 0.5 * m1 * h, R(i-1) + 0.5 * n1 * h, D(i-1) + 0.5 * p1 * h);
+    m2 = g(t(i-1) + 0.5 * h, S(i-1) + 0.5 * k1 * h, I(i-1) + 0.5 * m1 * h, R(i-1) + 0.5 * n1 * h, D(i-1) + 0.5 * p1 * h);
+    n2 = j(t(i-1) + 0.5 * h, S(i-1) + 0.5 * k1 * h, I(i-1) + 0.5 * m1 * h, R(i-1) + 0.5 * n1 * h, D(i-1) + 0.5 * p1 * h);
+    p2 = l(t(i-1) + 0.5 * h, S(i-1) + 0.5 * k1 * h, I(i-1) + 0.5 * m1 * h, R(i-1) + 0.5 * n1 * h, D(i-1) + 0.5 * p1 * h);
+
+    k3 = f(t(i-1) + 0.5 * h, S(i-1) + 0.5 * k2 * h, I(i-1) + 0.5 * m2 * h, R(i-1) + 0.5 * n2 * h, D(i-1) + 0.5 * p2 * h);
+    m3 = g(t(i-1) + 0.5 * h, S(i-1) + 0.5 * k2 * h, I(i-1) + 0.5 * m2 * h, R(i-1) + 0.5 * n2 * h, D(i-1) + 0.5 * p2 * h);
+    n3 = j(t(i-1) + 0.5 * h, S(i-1) + 0.5 * k2 * h, I(i-1) + 0.5 * m2 * h, R(i-1) + 0.5 * n2 * h, D(i-1) + 0.5 * p2 * h);
+    p3 = l(t(i-1) + 0.5 * h, S(i-1) + 0.5 * k2 * h, I(i-1) + 0.5 * m2 * h, R(i-1) + 0.5 * n2 * h, D(i-1) + 0.5 * p2 * h);
+
+    k4 = f(t(i-1) + h, S(i-1) + k3 * h, I(i-1) + m3 * h, R(i-1) + n3 * h, D(i-1) + p3 * h);
+    m4 = g(t(i-1) + h, S(i-1) + k3 * h, I(i-1) + m3 * h, R(i-1) + n3 * h, D(i-1) + p3 * h);
+    n4 = j(t(i-1) + h, S(i-1) + k3 * h, I(i-1) + m3 * h, R(i-1) + n3 * h, D(i-1) + p3 * h);
+    p4 = l(t(i-1) + h, S(i-1) + k3 * h, I(i-1) + m3 * h, R(i-1) + n3 * h, D(i-1) + p3 * h);
+
+    S(i) = S(i-1) + (1/6) * h * (k1 + 2 * k2 + 2 * k3 + k4);
+    I(i) = I(i-1) + (1/6) * h * (m1 + 2 * m2 + 2 * m3 + m4);
+    R(i) = R(i-1) + (1/6) * h * (n1 + 2 * n2 + 2 * n3 + n4);
+    D(i) = D(i-1) + (1/6) * h * (p1 + 2 * p2 + 2 * p3 + p4);
+end
+
+plot(t, S, '-r')
+hold on
+plot(t, I, '-b')
+plot(t, R, '-g')
+plot(t, D, '-k')
+title('Modelo SIRCD - Evolución de la pandemia');
+xlabel('Días');
+ylabel('Número de individuos');
+legend('Susceptibles', 'Infectados', 'Recuperados', 'Muertos');
+hold off
+xlim([0 100]);
+ylim([0 1000]);
+
+En este caso, no se ha hecho uso de ninguna función ode, se han resuelto las ecuaciones diferenciales directamente con el algoritmo de Runge-Kutta de orden 4.
+Al igual que antes, los escenarios se diferenciarán únicamente en el parámetro S0, modificado por el número establecido en el parámetro C.
+
+Por último, en el apartado de Resultados y Trabajos futuros se hace una comparación con los modelos mencionados a lo largo del proyecto. 
+Se adjuntan aquí los códigos utilizados para los modelos SIS, SIR y SIRCD que contempla una posibilidad de confinamiento (el SIRCD habitual es el código adjuntado justo encima):
+
+%% MODELO SIS
+t0 = 0;
+tf = 60;
+steps = 1000; % Usamos 1000 iteraciones
+h = (tf-t0)/(steps-1);
+
+s0 = 1000; % Susceptibles iniciales
+I0 = 10;   % Infectados iniciales
+
+alpha=0.001;  % Tasa de transmisión
+beta=0.22;    % Tasa de recuperación 
+% Ecuaciones diferenciales
+f = @(t, S,I) -alpha*S*I + beta*I;
+g = @(t, S,I) alpha*S*I - beta*I;
+
+S = zeros(1,steps);
+I = zeros(1,steps);
+t = [t0:h:tf];
+
+S(1)=s0;
+I(1)=I0;
+
+for i=2:steps
+    k1=f(t(i-1), S(i-1), I(i-1));
+    m1=g(t(i-1), S(i-1), I(i-1));
+
+    k2=f(t(i-1)+0.5*h, S(i-1)+0.5*k1*h, I(i-1)+0.5*m1*h);
+    m2=g(t(i-1)+0.5*h, S(i-1)+0.5*k1*h, I(i-1)+0.5*m1*h);
+
+    k3=f(t(i-1)+0.5*h, S(i-1)+0.5*k2*h, I(i-1)+0.5*m2*h);
+    m3=g(t(i-1)+0.5*h, S(i-1)+0.5*k2*h, I(i-1)+0.5*m2*h);
+
+    k4=f(t(i-1)+h, S(i-1)+k3*h, I(i-1)+m3*h);
+    m4=g(t(i-1)+h, S(i-1)+k3*h, I(i-1)+m3*h);
+
+    S(i)=S(i-1)+1/6*h*(k1+2*k2+2*k3+k4);
+    I(i)=I(i-1)+1/6*h*(m1+2*m2+2*m3+m4);
+end
+
+plot(t,S,'-r')
+hold on
+plot(t,I,'-b')
+title (" Representación de evolución de las tendencias de pandemia")
+hold off
+
+%% MODELO SIR
+t0 = 0;
+tf = 60;
+steps = 1000; % Usamos 1000 iteraciones
+h = (tf-t0)/(steps-1);
+
+s0 = 1000;  % Susceptibles iniciales
+I0 = 10;    % Infectados iniciales
+R0 = 0;     % Recuperados iniciales
+
+alpha=0.001;  % Tasa de transmisión
+beta=0.22;    % Tasa de recuperación
+% Ecuaciones diferenciales
+f = @(t, S, I, R) -alpha*S*I;
+g = @(t, S, I, R) alpha*S*I - beta*I;
+j = @(t, S, I, R) beta*I;
+
+
+
+S = zeros(1,steps);
+I = zeros(1,steps);
+R = zeros(1,steps);
+t = [t0:h:tf];
+
+S(1)=s0;
+I(1)=I0;
+R(1)=R0;
+
+for i=2:steps
+    k1=f(t(i-1), S(i-1), I(i-1), R(i-1));
+    m1=g(t(i-1), S(i-1), I(i-1), R(i-1));
+    n1=j(t(i-1), S(i-1), I(i-1), R(i-1));
+
+    k2=f(t(i-1)+0.5*h, S(i-1)+0.5*k1*h, I(i-1)+0.5*m1*h, R(i-1)+0.5*n1*h);
+    m2=g(t(i-1)+0.5*h, S(i-1)+0.5*m1*h, I(i-1)+0.5*m1*h, R(i-1)+0.5*n1*h);
+    n2=j(t(i-1)+0.5*h, S(i-1)+0.5*m1*h, I(i-1)+0.5*m1*h, R(i-1)+0.5*n1*h);
+
+
+    k3=f(t(i-1)+0.5*h, S(i-1)+0.5*k2*h, I(i-1)+0.5*m2*h, R(i-1)+0.5*n2*h);
+    m3=g(t(i-1)+0.5*h, S(i-1)+0.5*k2*h, I(i-1)+0.5*m2*h, R(i-1)+0.5*n2*h);
+    n3=j(t(i-1)+0.5*h, S(i-1)+0.5*k2*h, I(i-1)+0.5*m2*h, R(i-1)+0.5*n2*h);
+
+    k4=f(t(i-1)+h, S(i-1)+k3*h, I(i-1)+m3*h, R(i-1)+n3*h);
+    m4=g(t(i-1)+h, S(i-1)+k3*h, I(i-1)+m3*h, R(i-1)+n3*h);
+    n4=j(t(i-1)+h, S(i-1)+k3*h, I(i-1)+m3*h, R(i-1)+n3*h);
+
+    S(i)=S(i-1)+1/6*h*(k1+2*k2+2*k3+k4);
+    I(i)=I(i-1)+1/6*h*(m1+2*m2+2*m3+m4);
+    R(i)=R(i-1)+1/6*h*(n1+2*n2+2*n3+n4);
+
+end
+
+plot(t,S,'-r')
+hold on
+plot(t,I,'-b')
+plot (t,R,'-g')
+title (" Representación de evolución de las tendencias de pandemia")
+hold off
+
+%% MODELO SIRCD que contempla posibilidad de confinamiento
+t0 = 0;
+tf = 60;
+steps = 1000; % Usamos 1000 iteraciones
+h = (tf-t0)/(steps-1);
+
+s0 = 1000;  % Susceptibles iniciales
+I0 = 10;    % Infectados iniciales
+R0 = 0;     % Recuperados iniciales
+C0 = 0;     % Confinados iniciales
+D0 = 0;     % Fallecidos iniciales
+
+alpha = 0.001; % Tasa de transmisión
+beta = 0.22; % Tasa de recuperación
+delta = 0.05; % Tasa de mortalidad
+lambda = 0.5; % Probabilidad de confinamiento
+omega = 0.2; % Probabilidad de desconfinamiento
+% Ecuaciones diferenciales
+f = @(t, S, C, I, D, R) -alpha*S*I - lambda*S + omega*C;
+g = @(t, S, C, I, D, R) lambda*S - omega*C;
+m = @(t, S, C, I, D, R) alpha*S*I - beta*I - delta*I;
+j = @(t, S, C, I, D, R) delta*I;
+k = @(t, S, C, I, D, R) beta*I;
+
+S = zeros(1, steps);
+C = zeros(1, steps);
+I = zeros(1, steps);
+D = zeros(1, steps);
+R = zeros(1, steps);
+t = linspace(t0, tf, steps);
+
+S(1) = s0;
+C(1) = C0;
+I(1) = I0;
+D(1) = D0;
+R(1) = R0;
+
+for i = 2:steps
+k1 = f(t(i-1), S(i-1), C(i-1), I(i-1), D(i-1), R(i-1));
+m1 = g(t(i-1), S(i-1), C(i-1), I(i-1), D(i-1), R(i-1));
+n1 = m(t(i-1), S(i-1), C(i-1), I(i-1), D(i-1), R(i-1));
+o1 = j(t(i-1), S(i-1), C(i-1), I(i-1), D(i-1), R(i-1));
+p1 = k(t(i-1), S(i-1), C(i-1), I(i-1), D(i-1), R(i-1));
+
+k2 = f(t(i-1) + 0.5*h, S(i-1) + 0.5*k1*h, C(i-1) + 0.5*m1*h, I(i-1) + 0.5*n1*h, D(i-1) + 0.5*o1*h, R(i-1) + 0.5*p1*h);
+m2 = g(t(i-1) + 0.5*h, S(i-1) + 0.5*k1*h, C(i-1) + 0.5*m1*h, I(i-1) + 0.5*n1*h, D(i-1) + 0.5*o1*h, R(i-1) + 0.5*p1*h);
+n2 = m(t(i-1) + 0.5*h, S(i-1) + 0.5*k1*h, C(i-1) + 0.5*m1*h, I(i-1) + 0.5*n1*h, D(i-1) + 0.5*o1*h, R(i-1) + 0.5*p1*h);
+o2 = j(t(i-1) + 0.5*h, S(i-1) + 0.5*k1*h, C(i-1) + 0.5*m1*h, I(i-1) + 0.5*n1*h, D(i-1) + 0.5*o1*h, R(i-1) + 0.5*p1*h);
+p2 = k(t(i-1) + 0.5*h, S(i-1) + 0.5*k1*h, C(i-1) + 0.5*m1*h, I(i-1) + 0.5*n1*h, D(i-1) + 0.5*o1*h, R(i-1) + 0.5*p1*h);
+
+k3 = f(t(i-1) + 0.5*h, S(i-1) + 0.5*k2*h, C(i-1) + 0.5*m2*h, I(i-1) + 0.5*n2*h, D(i-1) + 0.5*o2*h, R(i-1) + 0.5*p2*h);
+m3 = g(t(i-1) + 0.5*h, S(i-1) + 0.5*k2*h, C(i-1) + 0.5*m2*h, I(i-1) + 0.5*n2*h, D(i-1) + 0.5*o2*h, R(i-1) + 0.5*p2*h);
+n3 = m(t(i-1) + 0.5*h, S(i-1) + 0.5*k2*h, C(i-1) + 0.5*m2*h, I(i-1) + 0.5*n2*h, D(i-1) + 0.5*o2*h, R(i-1) + 0.5*p2*h);
+o3 = j(t(i-1) + 0.5*h, S(i-1) + 0.5*k2*h, C(i-1) + 0.5*m2*h, I(i-1) + 0.5*n2*h, D(i-1) + 0.5*o2*h, R(i-1) + 0.5*p2*h);
+p3 = k(t(i-1) + 0.5*h, S(i-1) + 0.5*k2*h, C(i-1) + 0.5*m2*h, I(i-1) + 0.5*n2*h, D(i-1) + 0.5*o2*h, R(i-1) + 0.5*p2*h);
+
+k4 = f(t(i-1) + h, S(i-1) + k3*h, C(i-1) + m3*h, I(i-1) + n3*h, D(i-1) + o3*h, R(i-1) + p3*h);
+m4 = g(t(i-1) + h, S(i-1) + k3*h, C(i-1) + m3*h, I(i-1) + n3*h, D(i-1) + o3*h, R(i-1) + p3*h);
+n4 = m(t(i-1) + h, S(i-1) + k3*h, C(i-1) + m3*h, I(i-1) + n3*h, D(i-1) + o3*h, R(i-1) + p3*h);
+o4 = j(t(i-1) + h, S(i-1) + k3*h, C(i-1) + m3*h, I(i-1) + n3*h, D(i-1) + o3*h, R(i-1) + p3*h);
+p4 = k(t(i-1) + h, S(i-1) + k3*h, C(i-1) + m3*h, I(i-1) + n3*h, D(i-1) + o3*h, R(i-1) + p3*h);
+
+S(i) = S(i-1) + 1/6*h*(k1 + 2*k2 + 2*k3 + k4);
+C(i) = C(i-1) + 1/6*h*(m1 + 2*m2 + 2*m3 + m4);
+I(i) = I(i-1) + 1/6*h*(n1 + 2*n2 + 2*n3 + n4);
+D(i) = D(i-1) + 1/6*h*(o1 + 2*o2 + 2*o3 + o4);
+R(i) = R(i-1) + 1/6*h*(p1 + 2*p2 + 2*p3 + p4);
+end
+plot(t, S, '-r')
+hold on
+plot(t, I, '-b')
+plot(t, R, '-g')
+plot(t, D, '-k')
+plot(t, C, '-y')
+title ("Modelo SIRCD. Evolución de la epidemia")
+legend('Susceptibles', 'Infectados', 'Recuperados','Fallecidos', 'Confinados')
+hold off
+
+Cada uno de estos modelos utiliza para resolver el algoritmo de Runge-Kutta de orden 4.
